@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: silky_mysql
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "3306:3306"
+
+  fastapi:
+    build: ./fastapi
+    container_name: silky_fastapi
+    restart: unless-stopped
+    depends_on:
+      - mysql
+    env_file:
+      - .env
+    environment:
+      DB_HOST: mysql
+      DB_PORT: ${DB_PORT}
+      DB_USER: ${MYSQL_USER}
+      DB_PASS: ${MYSQL_PASSWORD}
+      DB_NAME: ${MYSQL_DATABASE}
+      HOST: 0.0.0.0
+      PORT: ${FASTAPI_PORT}
+    ports:
+      - "${FASTAPI_PORT}:${FASTAPI_PORT}"
+
+  bot:
+    build: ./bot
+    container_name: silky_bot
+    restart: unless-stopped
+    depends_on:
+      - fastapi
+    env_file:
+      - .env
+    environment:
+      TELEGRAM_TOKEN: ${TELEGRAM_TOKEN}
+      API_URL: "http://fastapi:${FASTAPI_PORT}"
+
+volumes:
+  mysql_data:
