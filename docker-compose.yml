@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   mysql:
     image: mysql:8.0
@@ -21,16 +19,16 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: silky_fastapi
-    restart: unless-stopped
     depends_on:
       - mysql
     environment:
       DB_HOST: mysql
       DB_PORT: 3306
-      DB_USER: ${MYSQL_USER}
-      DB_PASS: ${MYSQL_PASSWORD}
-      DB_NAME: ${MYSQL_DATABASE}
-    command: ["uvicorn", "fastapi.main:app", "--host", "0.0.0.0", "--port", "8000"]
+      DB_USER: nurtas
+      DB_PASS: nurtas05
+      DB_NAME: products_db
+    working_dir: /app/backend
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
     ports:
       - "8000:8000"
 
@@ -45,8 +43,11 @@ services:
     environment:
       TELEGRAM_TOKEN: ${TELEGRAM_TOKEN}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
-      API_URL: "http://fastapi:8000"
-    command: ["python", "bot/bot.py"]
+      API_URL: http://fastapi:8000
+    working_dir: /app
+    command: [ "python", "bot/bot.py" ]
+    dns:
+      - 8.8.8.8
 
 volumes:
   mysql_data:
