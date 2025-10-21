@@ -5,8 +5,6 @@ services:
     image: mysql:8.0
     container_name: silky_mysql
     restart: unless-stopped
-    env_file:
-      - .env
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
@@ -24,18 +22,14 @@ services:
     restart: unless-stopped
     depends_on:
       - mysql
-    env_file:
-      - .env
     environment:
       DB_HOST: mysql
-      DB_PORT: ${DB_PORT}
+      DB_PORT: 3306
       DB_USER: ${MYSQL_USER}
       DB_PASS: ${MYSQL_PASSWORD}
       DB_NAME: ${MYSQL_DATABASE}
-      HOST: 0.0.0.0
-      PORT: ${FASTAPI_PORT}
     ports:
-      - "${FASTAPI_PORT}:${FASTAPI_PORT}"
+      - "8000:8000"
 
   bot:
     build: ./bot
@@ -43,11 +37,10 @@ services:
     restart: unless-stopped
     depends_on:
       - fastapi
-    env_file:
-      - .env
     environment:
       TELEGRAM_TOKEN: ${TELEGRAM_TOKEN}
-      API_URL: "http://fastapi:${FASTAPI_PORT}"
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      API_URL: "http://fastapi:8000"
 
 volumes:
   mysql_data:

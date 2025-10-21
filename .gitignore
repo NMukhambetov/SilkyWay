@@ -1,6 +1,6 @@
 __pycache__/
 venv/
-env/
+*.env
 .venv/
 *.egg-info/
 dist/
@@ -13,4 +13,3 @@ mysql_data/
 .vscode/
 .idea/
 
-.env/
