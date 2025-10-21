@@ -15,5 +15,9 @@ VALUES
 ('Headphones', 'Noise-cancelling over-ear headphones', 199.99, 25),
 ('Smartphone', 'High-end Android phone with 128GB storage', 699.00, 15);
 
+CREATE USER IF NOT EXISTS 'appuser'@'%' IDENTIFIED BY 'apppassword';
+GRANT ALL PRIVILEGES ON products_db.* TO 'appuser'@'%';
+FLUSH PRIVILEGES;
+
 
 

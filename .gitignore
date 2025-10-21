@@ -13,3 +13,7 @@ mysql_data/
 .vscode/
 .idea/
 
+.env
+.env.*
+
+

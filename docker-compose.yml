@@ -17,7 +17,9 @@ services:
       - "3306:3306"
 
   fastapi:
-    build: ./fastapi
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: silky_fastapi
     restart: unless-stopped
     depends_on:
@@ -28,11 +30,14 @@ services:
       DB_USER: ${MYSQL_USER}
       DB_PASS: ${MYSQL_PASSWORD}
       DB_NAME: ${MYSQL_DATABASE}
+    command: ["uvicorn", "fastapi.main:app", "--host", "0.0.0.0", "--port", "8000"]
     ports:
       - "8000:8000"
 
   bot:
-    build: ./bot
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: silky_bot
     restart: unless-stopped
     depends_on:
@@ -41,6 +46,7 @@ services:
       TELEGRAM_TOKEN: ${TELEGRAM_TOKEN}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       API_URL: "http://fastapi:8000"
+    command: ["python", "bot/bot.py"]
 
 volumes:
   mysql_data:
