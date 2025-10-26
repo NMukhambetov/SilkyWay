@@ -23,16 +23,15 @@ if not TOKEN or not API_URL or not ADMIN_PASSWORD:
 bot = telebot.TeleBot(TOKEN)
 authorized_users = set()
 user_state = {}
-
+recently_viewed = {}
 
 def main_menu():
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.row("/list", "/get")
     markup.row("/add", "/update", "/delete")
     markup.row("/search", "/lowstock")
-    markup.row("/login", "/home")
+    markup.row("/recent", "/login", "/home")
     return markup
-
 
 @bot.message_handler(commands=['start', 'home'])
 def start(message):
@@ -46,11 +45,11 @@ def start(message):
         "🗑 <b>/delete</b> — Delete a product (admin only)\n"
         "🔎 <b>/search</b> — Search products by name\n"
         "📦 <b>/lowstock</b> — Products with low stock\n"
+        "🕘 <b>/recent</b> — Recently viewed products\n"
         "🔑 <b>/login</b> — Admin login"
     )
     bot.send_message(message.chat.id, text, parse_mode="HTML", reply_markup=main_menu())
     user_state.pop(message.chat.id, None)
-
 
 @bot.message_handler(commands=['login'])
 def login_step1(message):
@@ -75,7 +74,6 @@ def check_admin(func):
         return func(message)
     return wrapper
 
-
 @bot.message_handler(commands=['list'])
 def list_products(message):
     try:
@@ -91,7 +89,6 @@ def list_products(message):
         bot.send_message(message.chat.id, text, parse_mode="HTML", reply_markup=main_menu())
     except Exception as e:
         bot.send_message(message.chat.id, f"❌ Error: {str(e)}", reply_markup=main_menu())
-
 
 @bot.message_handler(commands=['get'])
 def get_product_step1(message):
@@ -111,6 +108,11 @@ def get_product_step2(message):
                 f"💰 Price: ${p['price']}\n"
                 f"📦 Stock: {p['stock']}"
             )
+
+            if message.chat.id not in recently_viewed:
+                recently_viewed[message.chat.id] = []
+            recently_viewed[message.chat.id].insert(0, p)
+            recently_viewed[message.chat.id] = recently_viewed[message.chat.id][:5]
         elif response.status_code == 404:
             text = f"❌ Product with ID {product_id} not found."
         else:
@@ -122,6 +124,17 @@ def get_product_step2(message):
         bot.send_message(message.chat.id, f"❌ Error: {str(e)}")
     finally:
         user_state.pop(message.chat.id, None)
+
+@bot.message_handler(commands=['recent'])
+def show_recent(message):
+    products = recently_viewed.get(message.chat.id, [])
+    if not products:
+        bot.send_message(message.chat.id, "📭 You haven't viewed any products yet.", reply_markup=main_menu())
+        return
+    text = "🕘 <b>Recently Viewed Products:</b>\n\n" + "\n".join(
+        [f"🔹 <b>{p['id']}</b>. {p['name']} — ${p['price']}" for p in products]
+    )
+    bot.send_message(message.chat.id, text, parse_mode="HTML", reply_markup=main_menu())
 
 @bot.message_handler(commands=['add'])
 @check_admin
