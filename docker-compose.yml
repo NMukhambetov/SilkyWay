@@ -1,8 +1,10 @@
+version: "3.9"
+
 services:
   mysql:
     image: mysql:8.0
     container_name: silky_mysql
-    restart: unless-stopped
+    restart: always
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
@@ -13,6 +15,8 @@ services:
       - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     ports:
       - "3306:3306"
+    networks:
+      - silky_network
 
   fastapi:
     build:
@@ -21,33 +25,39 @@ services:
     container_name: silky_fastapi
     depends_on:
       - mysql
-    environment:
-      DB_HOST: mysql
-      DB_PORT: 3306
-      DB_USER: nurtas
-      DB_PASS: nurtas05
-      DB_NAME: products_db
-    working_dir: /app/backend
-    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+    env_file:
+      - .env
+    working_dir: /app
+    command: >
+      bash -c "
+      python check_db_connection.py &&
+      alembic -c alembic.ini upgrade head &&
+      uvicorn backend.main:app --host 0.0.0.0 --port 8000
+      "
     ports:
       - "8000:8000"
+    restart: always
+    networks:
+      - silky_network
 
   bot:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: silky_bot
-    restart: unless-stopped
+    restart: always
     depends_on:
       - fastapi
-    environment:
-      TELEGRAM_TOKEN: ${TELEGRAM_TOKEN}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
-      API_URL: http://fastapi:8000
+    env_file:
+      - .env
     working_dir: /app
     command: [ "python", "bot/bot.py" ]
-    dns:
-      - 8.8.8.8
+    networks:
+      - silky_network
 
 volumes:
   mysql_data:
+
+networks:
+  silky_network:
+    driver: bridge

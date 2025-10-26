@@ -5,7 +5,7 @@ from pymysql.cursors import DictCursor
 DB_HOST = os.getenv("DB_HOST", "mysql")
 DB_PORT = int(os.getenv("DB_PORT", 3306))
 DB_USER = os.getenv("DB_USER", "nurtas")
-DB_PASS = os.getenv("DB_PASS", "nurtas05")
+DB_PASS = os.getenv("DB_PASSWORD", "nurtas05")
 DB_NAME = os.getenv("DB_NAME", "products_db")
 
 def get_connection():

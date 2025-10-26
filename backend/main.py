@@ -1,52 +1,53 @@
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-import queries
+from fastapi.middleware.cors import CORSMiddleware
+import backend.queries as queries
 
-app = FastAPI()
+app = FastAPI(title="SilkyWay Product API", version="2.0")
 
-class Product(BaseModel):
-    name: str
-    description: str
-    price: float
-    stock: int
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/products")
-def get_products():
-    try:
-        return queries.get_all_products()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+def list_products():
+    return queries.get_all_products()
 
 @app.get("/products/{product_id}")
 def get_product(product_id: int):
-    try:
-        product = queries.get_product_by_id(product_id)
-        if not product:
-            raise HTTPException(status_code=404, detail="Product not found")
-        return product
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    product = queries.get_product_by_id(product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return product
 
 @app.post("/products")
-def add_product(product: Product):
+def create_product(data: dict):
     try:
-        queries.add_product(product.name, product.description, product.price, product.stock)
-        return {"message": "Product added successfully"}
+        product_id = queries.add_product(data["name"], data["description"], data["price"], data["stock"])
+        return {"message": "Product added successfully", "id": product_id}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
 
 @app.put("/products/{product_id}")
-def update_product(product_id: int, product: Product):
-    try:
-        queries.update_product(product_id, product.name, product.description, product.price, product.stock)
-        return {"message": "Product updated successfully"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+def update_product(product_id: int, data: dict):
+    updated = queries.update_product(product_id, data["name"], data["description"], data["price"], data["stock"])
+    if not updated:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return {"message": "Product updated successfully"}
 
 @app.delete("/products/{product_id}")
 def delete_product(product_id: int):
-    try:
-        queries.delete_product(product_id)
-        return {"message": "Product deleted successfully"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    deleted = queries.delete_product(product_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return {"message": "Product deleted successfully"}
+
+@app.get("/search/{keyword}")
+def search(keyword: str):
+    return queries.search_products(keyword)
+
+@app.get("/lowstock")
+def low_stock(threshold: int = 5):
+    return queries.get_low_stock(threshold)
