@@ -48,7 +48,7 @@ services:
     restart: always
     depends_on:
       fastapi:
-        condition: service_started   # 👈 чтобы бот подождал, пока FastAPI стартует
+        condition: service_started
     env_file:
       - .env
     working_dir: /app

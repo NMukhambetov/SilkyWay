@@ -116,7 +116,7 @@ def list_products(message):
         return
 
     if not isinstance(data, list) or not data:
-        send(message, "📭 No products found in the database.")
+        send(message, "📭 The product list is empty. Add new products using /add.")
         return
 
     text = "🛒 <b>Product List:</b>\n\n" + "\n".join(
@@ -139,11 +139,18 @@ def get_product_step1(message):
 @bot.message_handler(func=lambda m: user_state.get(m.chat.id) == "waiting_for_get_id")
 def get_product_step2(message):
     try:
+        if not message.text.isdigit():
+            send(message, "⚠️ Please enter a valid numeric ID.")
+            return
+
         product_id = int(message.text)
         data = safe_request("get", f"/products/{product_id}")
 
         if "error" in data:
-            send(message, f"⚠️ {data['error']}")
+            if "Backend unavailable" in data["error"]:
+                send(message, "🚫 The server is temporarily unavailable. Please try again later.")
+            else:
+                send(message, f"⚠️ {data['error']}")
             return
 
         if not data or "name" not in data:
@@ -163,8 +170,9 @@ def get_product_step2(message):
         recently_viewed[message.chat.id] = recently_viewed[message.chat.id][:5]
 
         send(message, text)
-    except ValueError:
-        send(message, "❌ Please enter a valid numeric ID.")
+
+    except Exception as e:
+        send(message, f"⚠️ Unexpected error: {str(e)}")
     finally:
         user_state.pop(message.chat.id, None)
 
@@ -200,21 +208,31 @@ def add_product_step2(message):
             raise ValueError("❌ Wrong format! Use: Name, Description, Price, Stock")
 
         name, desc, price, stock = parts
+        try:
+            price = float(price)
+            stock = int(stock)
+        except ValueError:
+            send(message, "⚠️ Price must be a number, and Stock must be an integer.")
+            return
+
         data = safe_request("post", "/products", json={
             "name": name,
             "description": desc,
-            "price": float(price),
-            "stock": int(stock)
+            "price": price,
+            "stock": stock
         })
 
         if "error" in data:
             send(message, f"⚠️ {data['error']}")
+        elif "id" in data:
+            send(message, f"✅ Product '{name}' added successfully (ID: {data['id']})!")
         else:
-            send(message, "✅ Product added successfully!")
+            send(message, "⚠️ Product not added due to unknown server response.")
     except Exception as e:
         send(message, f"❌ {str(e)}")
     finally:
         user_state.pop(message.chat.id, None)
+
 
 
 @bot.message_handler(commands=['update'])
@@ -233,14 +251,20 @@ def update_product_step2(message):
     try:
         parts = [p.strip() for p in message.text.split(",")]
         if len(parts) < 2:
-            raise ValueError("❌ Wrong format! Use: ID, field=value, field=value...")
+            send(message, "❌ Wrong format! Use: ID, field=value, field=value...")
+            return
+
+        if not parts[0].isdigit():
+            send(message, "⚠️ Product ID must be numeric.")
+            return
 
         pid = int(parts[0])
         updates = {}
 
         for p in parts[1:]:
             if "=" not in p:
-                raise ValueError(f"❌ Invalid field format: {p}")
+                send(message, f"⚠️ Invalid field format: '{p}'. Use field=value.")
+                return
             key, val = p.split("=", 1)
             key, val = key.strip(), val.strip()
             if key == "price":
@@ -252,18 +276,18 @@ def update_product_step2(message):
         data = safe_request("put", f"/products/{pid}", json=updates)
 
         if "error" in data:
-            msg = f"⚠️ {data['error']}"
-        elif isinstance(data, dict) and ("id" in data or "message" in data):
-            msg = "✅ Product updated successfully!"
+            send(message, f"⚠️ {data['error']}")
+        elif not data or "message" not in data:
+            send(message, f"❌ Product with ID {pid} not found.")
         else:
-            msg = f"❌ Product ID {pid} not found."
+            send(message, "✅ Product updated successfully!")
 
-        send(message, msg)
+    except ValueError:
+        send(message, "⚠️ Please ensure numbers are valid (e.g. price=12.5, stock=5).")
     except Exception as e:
-        send(message, f"⚠️ Error: {str(e)}")
+        send(message, f"⚠️ Unexpected error: {str(e)}")
     finally:
         user_state.pop(message.chat.id, None)
-
 
 @bot.message_handler(commands=['delete'])
 @check_admin
@@ -274,19 +298,22 @@ def delete_product_step1(message):
 @bot.message_handler(func=lambda m: user_state.get(m.chat.id) == "waiting_for_delete")
 def delete_product_step2(message):
     try:
+        if not message.text.isdigit():
+            send(message, "⚠️ Please enter a valid numeric ID.")
+            return
+
         pid = int(message.text)
         data = safe_request("delete", f"/products/{pid}")
 
         if "error" in data:
-            msg = f"⚠️ {data['error']}"
-        elif not data or "message" in data:
-            msg = "✅ Product deleted successfully!"
+            send(message, f"⚠️ {data['error']}")
+        elif not data or "message" not in data:
+            send(message, f"❌ Product with ID {pid} not found.")
         else:
-            msg = f"❌ Product ID {pid} not found."
+            send(message, f"✅ Product ID {pid} deleted successfully!")
 
-        send(message, msg)
     except Exception as e:
-        send(message, f"❌ {str(e)}")
+        send(message, f"❌ Unexpected error: {str(e)}")
     finally:
         user_state.pop(message.chat.id, None)
 
