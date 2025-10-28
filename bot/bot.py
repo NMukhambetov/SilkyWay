@@ -303,20 +303,43 @@ def delete_product_step2(message):
             return
 
         pid = int(message.text)
+
+        all_products = safe_request("get", "/products")
+
+        if "error" in all_products:
+            send(message, f"⚠️ {all_products['error']}")
+            return
+
+        if not isinstance(all_products, list) or not all_products:
+            send(message, "📭 No products found in the database.")
+            return
+
+        existing_ids = [p["id"] for p in all_products if "id" in p]
+        if pid not in existing_ids:
+            send(message, f"❌ Product with ID {pid} not found.")
+            return
+
         data = safe_request("delete", f"/products/{pid}")
 
         if "error" in data:
             send(message, f"⚠️ {data['error']}")
-        elif not data or "message" not in data:
-            send(message, f"❌ Product with ID {pid} not found.")
+            return
+
+        msg = data.get("message", "")
+
+        if msg:
+            if "not found" in msg.lower():
+                send(message, f"❌ Product with ID {pid} not found.")
+            else:
+                send(message, f"✅ {msg}")
         else:
             send(message, f"✅ Product ID {pid} deleted successfully!")
 
     except Exception as e:
         send(message, f"❌ Unexpected error: {str(e)}")
+
     finally:
         user_state.pop(message.chat.id, None)
-
 
 @bot.message_handler(commands=['search'])
 def search_step1(message):
