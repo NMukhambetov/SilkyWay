@@ -47,7 +47,8 @@ services:
     container_name: silky_bot
     restart: always
     depends_on:
-      - fastapi
+      fastapi:
+        condition: service_started   # 👈 чтобы бот подождал, пока FastAPI стартует
     env_file:
       - .env
     working_dir: /app
