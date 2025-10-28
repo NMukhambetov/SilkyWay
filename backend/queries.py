@@ -31,22 +31,29 @@ def add_product(name, description, price, stock):
     finally:
         conn.close()
 
-def update_product(product_id, name, description, price, stock):
+def update_product(product_id, data):
     conn = get_connection()
     try:
         with conn.cursor() as cursor:
-            cursor.execute(
-                """
-                UPDATE products
-                SET name=%s, description=%s, price=%s, stock=%s
-                WHERE id=%s;
-                """,
-                (name, description, price, stock, product_id)
-            )
+            allowed_fields = ["name", "description", "price", "stock"]
+            data = {k: v for k, v in data.items() if k in allowed_fields}
+
+            if not data:
+                return False
+
+            set_clause = ", ".join([f"{key}=%s" for key in data.keys()])
+            values = list(data.values())
+            values.append(product_id)
+
+            query = f"UPDATE products SET {set_clause} WHERE id=%s;"
+            cursor.execute(query, values)
             conn.commit()
-            return cursor.rowcount
+
+            return cursor.rowcount > 0
     finally:
         conn.close()
+
+
 
 def delete_product(product_id):
     conn = get_connection()

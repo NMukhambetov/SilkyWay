@@ -32,10 +32,9 @@ def create_product(data: dict):
 
 @app.put("/products/{product_id}")
 def update_product(product_id: int, data: dict):
-    updated = queries.update_product(product_id, data["name"], data["description"], data["price"], data["stock"])
-    if not updated:
-        raise HTTPException(status_code=404, detail="Product not found")
-    return {"message": "Product updated successfully"}
+    if queries.update_product(product_id, data):
+        return {"message": "✅ Product updated successfully", "id": product_id}
+    raise HTTPException(status_code=404, detail="❌ Product not found")
 
 @app.delete("/products/{product_id}")
 def delete_product(product_id: int):

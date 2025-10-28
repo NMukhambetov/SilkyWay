@@ -1,7 +1,7 @@
 CREATE DATABASE IF NOT EXISTS products_db;
 USE products_db;
 
--- Создаём пользователя с нужным типом авторизации
+
 CREATE USER IF NOT EXISTS 'nurtas'@'%' IDENTIFIED WITH mysql_native_password BY 'nurtas05';
 
 GRANT ALL PRIVILEGES ON products_db.* TO 'nurtas'@'%';

@@ -172,37 +172,55 @@ def add_product_step2(message):
 @bot.message_handler(commands=['update'])
 @check_admin
 def update_product_step1(message):
-    bot.send_message(message.chat.id,
-                     "✏️ Enter updated product data:\n"
-                     "<b>ID, Name, Description, Price, Stock</b>\n\n"
-                     "Example:\n<b>1, Keyboard, RGB mechanical keyboard, 89.99, 15</b>",
-                     parse_mode="HTML")
+    bot.send_message(
+        message.chat.id,
+        "✏️ Enter updated product data:\n"
+        "<b>ID, field=value, field=value...</b>\n\n"
+        "Examples:\n"
+        "<b>1, price=79.99</b>\n"
+        "<b>1, name=Keyboard, stock=10</b>",
+        parse_mode="HTML"
+    )
     user_state[message.chat.id] = "waiting_for_update"
+
 
 @bot.message_handler(func=lambda m: user_state.get(m.chat.id) == "waiting_for_update")
 def update_product_step2(message):
     try:
         parts = [p.strip() for p in message.text.split(",")]
-        if len(parts) != 5:
-            raise ValueError("❌ Wrong format! Use: ID, Name, Description, Price, Stock")
-        pid, name, desc, price, stock = parts
-        response = requests.put(f"{API_URL}/products/{int(pid)}", json={
-            "name": name,
-            "description": desc,
-            "price": float(price),
-            "stock": int(stock)
-        }, timeout=10)
+        if len(parts) < 2:
+            raise ValueError("❌ Wrong format! Use: ID, field=value, field=value...")
+
+        pid = int(parts[0])
+        updates = {}
+
+        for p in parts[1:]:
+            if "=" not in p:
+                raise ValueError(f"❌ Invalid field format: {p}")
+            key, val = p.split("=", 1)
+            key, val = key.strip(), val.strip()
+
+            if key in ["price"]:
+                val = float(val)
+            elif key in ["stock"]:
+                val = int(val)
+            updates[key] = val
+
+        response = requests.put(f"{API_URL}/products/{pid}", json=updates, timeout=10)
+
         if response.status_code == 200:
-            bot.send_message(message.chat.id, "✅ Product updated successfully!", reply_markup=main_menu())
+            msg = "✅ Product updated successfully!"
         elif response.status_code == 404:
-            bot.send_message(message.chat.id, f"❌ Product ID {pid} not found.", reply_markup=main_menu())
+            msg = f"❌ Product ID {pid} not found."
         else:
-            bot.send_message(message.chat.id, f"❌ Error: {response.text}", reply_markup=main_menu())
+            msg = f"❌ Error: {response.text}"
+
+        bot.send_message(message.chat.id, msg, reply_markup=main_menu())
+
     except Exception as e:
-        bot.send_message(message.chat.id, f"❌ {str(e)}", reply_markup=main_menu())
+        bot.send_message(message.chat.id, f"⚠️ Error: {str(e)}", reply_markup=main_menu())
     finally:
         user_state.pop(message.chat.id, None)
-
 
 @bot.message_handler(commands=['delete'])
 @check_admin
